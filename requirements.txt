@@ -1,0 +1,7 @@
+pony
+pandas
+strawberry-graphql>=0.57.2
+pyyaml
+sqlalchemy
+mysql-connector-python
+pymysql

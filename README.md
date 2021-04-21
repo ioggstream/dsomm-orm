@@ -1,14 +1,30 @@
-# .github
+# DSOMM Model Playground
 
-Repository for boilerplate workflows and CI for python projects.
+This python repository helps in validating the dsomm model files,
+and includes a dockerized environments with:
 
+- a mysql server
+- a graphql app
 
-```
-.bandit.yaml
-.pre-commit-config.yaml
-.github
-└── workflows
-```
+# Environment setup
+
+At first you need to download some external files
+including samm2 and dsomm vocabularies (ioggstream branch).
+
+        setup.sh
+
+Start running some tests: they will create the database on the
+dockerized host too. Some test fails because they are under development.
+
+        docker-compose up test
+
+To play with your dev stuff you could use the `gql` service
+and enter the container.
+
+        docker-compose up -d gql
+        docker exec -ti dsomm-model_gql_1 /bin/bash
+
+# Contributing
 
 ## pre-commit
 
@@ -27,5 +43,3 @@ You can run it directly via
 Or install it as a pre-commit hook
 
         pre-commit install
-
-## .github/workflows
