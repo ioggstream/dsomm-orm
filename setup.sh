@@ -22,5 +22,11 @@ git-get(){
 mkdir -p downloads
 cd downloads
 git-get https://github.com/OWASP/samm "Supporting Resources/v2.0/Datamodel/Datafiles"
-# git-get https://github.com/wurstbrot/DevSecOps-MaturityModel data-new
-git-get https://github.com/ioggstream/DevSecOps-MaturityModel data-new ioggstream-orm-mysql
+git-get https://github.com/wurstbrot/DevSecOps-MaturityModel data-new
+#git-get https://github.com/ioggstream/DevSecOps-MaturityModel data-new ioggstream-orm-mysql
+find data-new -name \*.yaml -exec sed -i 's,v-security-testing|\(\w\)|\(\w\),V-ST-\2-\1,g' {} \;
+find data-new -name \*.yaml -exec sed -i 's,o-incident-management|\(\w\)|\(\w\),O-IM-\2-\1,g' {} \;
+find data-new -name \*.yaml -exec sed -i 's,o-environment-management|\(\w\)|\(\w\),O-EM-\2-\1,g' {} \;
+find data-new -name \*.yaml -exec sed -i 's,i-secure-deployment|\(\w\)|\(\w\),I-SD-\2-\1,g' {} \;
+find data-new -name \*.yaml -exec sed -i 's,i-secure-build|\(\w\)|\(\w\),I-SB-\2-\1,g' {} \;
+find data-new -name \*.yaml -exec sed -i 's,i-defect-management|\(\w\)|\(\w\),I-DM-\2-\1,g' {} \;

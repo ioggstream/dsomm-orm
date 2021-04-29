@@ -1,6 +1,11 @@
 """
 Create DSOMM database with pony.orm.
 """
+import http
+import json
+from re import findall
+from urllib.parse import urlparse
+
 from pony.orm import Database, Json, Optional, PrimaryKey, Required, db_session
 
 import dsomm
@@ -23,6 +28,7 @@ class Activity(db.Entity):
 class Implementation(db.Entity):
     name = PrimaryKey(str)
     description = Optional(str)
+    topics = Optional(Json)
 
     def activities(self):
         return Activity.select_by_sql(
@@ -52,7 +58,7 @@ def create_database():
             references = data.pop("references", [])
             level = data.pop("level")
             implementation = data.pop("implementation", None) or []
-            implementation = [x.strip() for x in implementation]
+            implementation = [x.strip() for x in implementation if isinstance(x, str)]
             t = Activity(
                 dimension=dimension,
                 subdimension=subdimension,
@@ -73,7 +79,22 @@ def create_database():
                 i = str(i)
                 if len(i) > 64:
                     i = i[:64]
-                Implementation.get(name=i) or Implementation(name=i)
+
+                topics = []
+                if ghrepo := findall('https://[a-z/0-9A-Z.]+', i):
+                    repo = urlparse(ghrepo[0]).path.strip("/")
+                    try:
+                        conn = http.client.HTTPSConnection("api.github.com")
+                        conn.request('GET', f'/repos/{repo}/topics', headers={
+                            "User-Agent": "curl",
+                            "Accept": "application/vnd.github.mercy-preview+json"})
+
+                        # get result
+                        response = json.loads(conn.getresponse().read())
+                        topics = response["names"]
+                    except:
+                        print(ghrepo, response)
+                Implementation.get(name=i) or Implementation(name=i, topics=topics)
 
 
 def overview(db):

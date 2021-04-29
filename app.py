@@ -3,6 +3,7 @@ Serve the DSOMM database via a GraphQL endpoint.
 """
 import os
 from typing import List
+from urllib.parse import urlparse
 
 import strawberry
 from pony.orm import db_session
@@ -47,10 +48,28 @@ class BareActivity:
     name: str
 
 
+import requests
+
+
 @strawberry.type
 class Implementation:
     name: str
     description: str
+    topics: List[str] = []
+
+    @strawberry.field
+    def topics(self) -> List[str]:
+        if self.name.startswith("https://github.com/"):
+            repo = urlparse(self.name).path.strip("/")
+            try:
+                ret = requests.get(
+                    f"https://api.github.com/repos/{repo}/topics",
+                    headers={"Accept": "application/vnd.github.mercy-preview+json"},
+                )
+                return ret.json()["names"]
+            except Exception:
+                return ["error", repo]
+        return ["todo"]
 
     @strawberry.field
     def activities(self) -> List[BareActivity]:
@@ -115,10 +134,18 @@ class Query:
             return [Reference(*k) for k in db.execute("SELECT * FROM reference;")]
 
     @strawberry.field
-    def implementations(self) -> List[Implementation]:
+    def implementations(self, name: str = None) -> List[Implementation]:
         with db_session:
+            if not name:
+                return [
+                    Implementation(*k)
+                    for k in db.execute("SELECT * FROM implementation")
+                ]
             return [
-                Implementation(*k) for k in db.execute("SELECT * FROM implementation;")
+                Implementation(*k)
+                for k in db.execute(
+                    "SELECT * FROM implementation WHERE name like $name"
+                )
             ]
 
     @strawberry.field
