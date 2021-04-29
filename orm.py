@@ -24,6 +24,17 @@ class Implementation(db.Entity):
     name = PrimaryKey(str)
     description = Optional(str)
 
+    def activities(self):
+        return Activity.select_by_sql(
+            """SELECT * FROM activity AS a
+                WHERE
+                JSON_SEARCH(a.implementation, 'one',
+                    $x
+                ) IS NOT NULL;
+            """,
+            globals={"x": self.name},
+        )
+
 
 class Reference(db.Entity):
     name = PrimaryKey(str)

@@ -8,6 +8,7 @@ import strawberry
 from pony.orm import db_session
 
 import dsomm
+import orm
 from orm import db
 
 DB_NAME = "dsomm"
@@ -19,6 +20,7 @@ db.bind(
     passwd=os.environ.get("MYSQL_ROOT_PASSWORD", "root"),
     db=DB_NAME,
 )
+db.generate_mapping()
 
 
 @strawberry.type
@@ -39,9 +41,33 @@ class ReferenceItem:
 
 
 @strawberry.type
+class BareActivity:
+    dimension: str
+    subdimension: str
+    name: str
+
+
+@strawberry.type
 class Implementation:
     name: str
     description: str
+
+    @strawberry.field
+    def activities(self) -> List[BareActivity]:
+        with db_session:
+            assert self.name
+
+            i = orm.Implementation[self.name]
+            assert i
+            print(i.to_dict())
+            acts = i.activities()
+            acts = list(acts)
+            return [
+                BareActivity(
+                    name=a.name, subdimension=a.subdimension, dimension=a.dimension
+                )
+                for a in acts
+            ]
 
 
 @strawberry.type
@@ -81,6 +107,8 @@ class Activity:
 
 @strawberry.type
 class Query:
+    """All endpoints."""
+
     @strawberry.field
     def references(self) -> List[Reference]:
         with db_session:

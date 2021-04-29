@@ -63,6 +63,22 @@ def interpolate_json_query(sql):
     return sql.replace("$", "$$")
 
 
+def test_activity(db):
+    from orm import Activity, Implementation
+
+    with db_session:
+        ret = Activity.select(lambda p: "Docker" in p.implementation)
+        list(ret)
+        i = Implementation["logstash"]
+        aslist = i.activities()
+        for x in aslist:
+            print("goo", x.name)
+        import pdb
+
+        pdb.set_trace()
+    raise NotImplementedError
+
+
 def test_overview(db):
     ret = overview(db)
     assert (
