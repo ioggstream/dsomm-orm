@@ -1,10 +1,14 @@
 """
 Serve the DSOMM database via a GraphQL endpoint.
 """
+import logging
 import os
+import re
+from shlex import quote as escape
 from typing import List
 from urllib.parse import urlparse
 
+import requests
 import strawberry
 from pony.orm import db_session
 
@@ -22,6 +26,8 @@ db.bind(
     db=DB_NAME,
 )
 db.generate_mapping()
+
+log = logging.getLogger(__name__)
 
 
 @strawberry.type
@@ -48,17 +54,14 @@ class BareActivity:
     name: str
 
 
-import requests
-
-
 @strawberry.type
 class Implementation:
     name: str
     description: str
-    topics: List[str] = []
+    topics: List[str] = None
 
     @strawberry.field
-    def topics(self) -> List[str]:
+    def atopics(self) -> List[str]:
         if self.name.startswith("https://github.com/"):
             repo = urlparse(self.name).path.strip("/")
             try:
@@ -111,8 +114,35 @@ class Activity:
     level: str
     data: str
     references: List[ReferenceItem]
-    implementation: List[Implementation]
+    _implementation: strawberry.Private[List[str]]
     done: int
+
+    @strawberry.field
+    def implementation(self) -> List[Implementation]:
+        entries = self._implementation
+        for i in entries:
+            if not re.match(r"[a-zA-Z0-9-\[\]\(\):]", i):
+                log.warning("Bad value: %r", i)
+                entries.remove(i)
+                continue
+            if len(i) > 100:
+                log.warning("Entry too long: %r", i)
+                entries.remove(i)
+                continue
+
+        if not entries:
+            return []
+
+        items = ["""'%s'""" % escape(i).strip("'") for i in entries]
+        items = "(" + ",".join(i for i in items) + ")"
+
+        with db_session:
+            return [
+                Implementation(**k.to_dict())
+                for k in orm.Implementation.select_by_sql(
+                    f"SELECT * FROM implementation " f"WHERE name  in {items}"  # noqa
+                )
+            ]
 
     @strawberry.field
     def samm2(self, stream: str) -> List[Samm2]:
@@ -136,22 +166,26 @@ class Query:
     @strawberry.field
     def implementations(self, name: str = None) -> List[Implementation]:
         with db_session:
-            if not name:
-                return [
-                    Implementation(*k)
-                    for k in db.execute("SELECT * FROM implementation")
-                ]
-            return [
-                Implementation(*k)
-                for k in db.execute(
+            q = orm.Implementation.select
+            if name:
+                q = lambda: orm.Implementation.select_by_sql(
                     "SELECT * FROM implementation WHERE name like $name"
                 )
-            ]
+            entries = [k.to_dict() for k in q()]
+            for k in entries:
+                k["_implementations"] = k.pop("implementations")
+
+            return [Implementation(**k) for k in entries]
 
     @strawberry.field
     def activities(self) -> List[Activity]:
         with db_session:
-            return [Activity(*k) for k in db.execute("SELECT * FROM activity;")]
+            entries = [k.to_dict() for k in orm.Activity.select()]
+            for k in entries:
+                if "implementation" in k:
+                    k["_implementation"] = k.pop("implementation", [])
+
+            return [Activity(**k) for k in entries]
 
     @strawberry.field
     def samm2(self) -> List[Samm2]:

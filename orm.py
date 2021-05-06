@@ -6,9 +6,12 @@ import json
 from re import findall
 from urllib.parse import urlparse
 
-from pony.orm import Database, Json, Optional, PrimaryKey, Required, db_session
+from pony.orm import (Database, Json, Optional, PrimaryKey, Required,
+                      db_session, set_sql_debug)
 
 import dsomm
+
+set_sql_debug(True)
 
 db = Database()
 
@@ -81,13 +84,18 @@ def create_database():
                     i = i[:64]
 
                 topics = []
-                if ghrepo := findall('https://[a-z/0-9A-Z.]+', i):
+                if ghrepo := findall("https://[a-z/0-9A-Z.]+", i):
                     repo = urlparse(ghrepo[0]).path.strip("/")
                     try:
                         conn = http.client.HTTPSConnection("api.github.com")
-                        conn.request('GET', f'/repos/{repo}/topics', headers={
-                            "User-Agent": "curl",
-                            "Accept": "application/vnd.github.mercy-preview+json"})
+                        conn.request(
+                            "GET",
+                            f"/repos/{repo}/topics",
+                            headers={
+                                "User-Agent": "curl",
+                                "Accept": "application/vnd.github.mercy-preview+json",
+                            },
+                        )
 
                         # get result
                         response = json.loads(conn.getresponse().read())
