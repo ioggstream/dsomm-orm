@@ -1,5 +1,11 @@
 # DSOMM Model Playground
 
+**NOTE** This is a temporary repository used for sharing design
+considerations that will removed in the future.
+Please look at https://dsomm.timo-pagel.de/
+and to https://github.com/wurstbrot/DevSecOps-MaturityModel for
+the consolidated version.
+
 This python repository helps in validating the dsomm model files,
 and includes a dockerized environments with:
 
