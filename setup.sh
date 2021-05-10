@@ -30,3 +30,6 @@ find data-new -name \*.yaml -exec sed -i 's,o-environment-management|\(\w\)|\(\w
 find data-new -name \*.yaml -exec sed -i 's,i-secure-deployment|\(\w\)|\(\w\),I-SD-\2-\1,g' {} \;
 find data-new -name \*.yaml -exec sed -i 's,i-secure-build|\(\w\)|\(\w\),I-SB-\2-\1,g' {} \;
 find data-new -name \*.yaml -exec sed -i 's,i-defect-management|\(\w\)|\(\w\),I-DM-\2-\1,g' {} \;
+
+# Reformat entries in implementation and requirements.
+find downloads/data-new/ -name \*yaml -exec python update_schema.py {} \;

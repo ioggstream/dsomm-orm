@@ -6,3 +6,4 @@ sqlalchemy
 mysql-connector-python
 pymysql
 html2markdown
+ruamel.yaml
