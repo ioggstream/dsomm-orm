@@ -32,6 +32,9 @@ repos:
   hooks:
     - id: isort
       name: isort (python)
+      # Use black profile for isort to avoid conflicts
+      #   see https://github.com/PyCQA/isort/issues/1518
+      args: ["--profile", "black"]
     - id: isort
       name: isort (cython)
       types: [cython]

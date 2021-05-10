@@ -6,8 +6,16 @@ import json
 from re import findall
 from urllib.parse import urlparse
 
-from pony.orm import (Database, Json, LongUnicode, Optional, PrimaryKey,
-                      Required, db_session, set_sql_debug)
+from pony.orm import (
+    Database,
+    Json,
+    LongUnicode,
+    Optional,
+    PrimaryKey,
+    Required,
+    db_session,
+    set_sql_debug,
+)
 
 import dsomm
 
@@ -120,7 +128,7 @@ def get_github_topics(repo):
         response = json.loads(conn.getresponse().read())
         topics = response["names"]
         return topics
-    except:
+    except Exception:
         print(repo, response)
         return []
 
