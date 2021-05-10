@@ -6,8 +6,8 @@ import json
 from re import findall
 from urllib.parse import urlparse
 
-from pony.orm import (Database, Json, Optional, PrimaryKey, Required,
-                      db_session, set_sql_debug)
+from pony.orm import (Database, Json, LongUnicode, Optional, PrimaryKey,
+                      Required, db_session, set_sql_debug)
 
 import dsomm
 
@@ -30,8 +30,10 @@ class Activity(db.Entity):
 
 class Implementation(db.Entity):
     name = PrimaryKey(str)
-    description = Optional(str)
+    description = Optional(LongUnicode)
     topics = Optional(Json)
+    tags = Optional(Json)
+    url = Optional(str)
 
     def activities(self):
         return Activity.select_by_sql(
@@ -61,12 +63,23 @@ def create_database():
             references = data.pop("references", [])
             level = data.pop("level")
             implementation = data.pop("implementation", None) or []
-            implementation = [x.strip() for x in implementation if isinstance(x, str)]
+            print(
+                "name",
+                name,
+                [
+                    x
+                    for x in implementation
+                    if implementation and (not isinstance(x, dict) or "name" not in x)
+                ],
+            )
+            implementation_keys = [
+                x["name"] for x in implementation if isinstance(x, dict) and "name" in x
+            ]
             t = Activity(
                 dimension=dimension,
                 subdimension=subdimension,
                 name=name,
-                implementation=implementation,
+                implementation=implementation_keys,
                 level=level,
                 references=references,
                 data=data,
@@ -77,32 +90,39 @@ def create_database():
                 reference = i.split(":")[0]
                 Reference.get(name=reference) or Reference(name=reference)
             for i in implementation:
-                if not i:
+                i = i.copy()
+                if not (i_name := i.pop("name", None)):
                     continue
-                i = str(i)
-                if len(i) > 64:
-                    i = i[:64]
 
+                i_name = str(i_name)[:64]
                 topics = []
-                if ghrepo := findall("https://[a-z/0-9A-Z.]+", i):
+                if ghrepo := findall("https://[a-z/0-9A-Z.]+", i_name):
                     repo = urlparse(ghrepo[0]).path.strip("/")
-                    try:
-                        conn = http.client.HTTPSConnection("api.github.com")
-                        conn.request(
-                            "GET",
-                            f"/repos/{repo}/topics",
-                            headers={
-                                "User-Agent": "curl",
-                                "Accept": "application/vnd.github.mercy-preview+json",
-                            },
-                        )
+                    topics = get_github_topics(repo)
+                Implementation.get(name=i_name) or Implementation(
+                    name=i_name, topics=topics, **i
+                )
 
-                        # get result
-                        response = json.loads(conn.getresponse().read())
-                        topics = response["names"]
-                    except:
-                        print(ghrepo, response)
-                Implementation.get(name=i) or Implementation(name=i, topics=topics)
+
+def get_github_topics(repo):
+    try:
+        conn = http.client.HTTPSConnection("api.github.com")
+        conn.request(
+            "GET",
+            f"/repos/{repo}/topics",
+            headers={
+                "User-Agent": "curl",
+                "Accept": "application/vnd.github.mercy-preview+json",
+            },
+        )
+
+        # get result
+        response = json.loads(conn.getresponse().read())
+        topics = response["names"]
+        return topics
+    except:
+        print(repo, response)
+        return []
 
 
 def overview(db):

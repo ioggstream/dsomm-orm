@@ -6,9 +6,7 @@ import os
 import re
 from shlex import quote as escape
 from typing import List
-from urllib.parse import urlparse
 
-import requests
 import strawberry
 from pony.orm import db_session
 
@@ -57,22 +55,10 @@ class BareActivity:
 @strawberry.type
 class Implementation:
     name: str
-    description: str
+    description: str = None
     topics: List[str] = None
-
-    @strawberry.field
-    def atopics(self) -> List[str]:
-        if self.name.startswith("https://github.com/"):
-            repo = urlparse(self.name).path.strip("/")
-            try:
-                ret = requests.get(
-                    f"https://api.github.com/repos/{repo}/topics",
-                    headers={"Accept": "application/vnd.github.mercy-preview+json"},
-                )
-                return ret.json()["names"]
-            except Exception:
-                return ["error", repo]
-        return ["todo"]
+    tags: List[str] = None
+    url: str = None
 
     @strawberry.field
     def activities(self) -> List[BareActivity]:
@@ -113,6 +99,7 @@ class Activity:
     name: str
     level: str
     data: str
+    _references = strawberry.Private[List[str]]
     references: List[ReferenceItem]
     _implementation: strawberry.Private[List[str]]
     done: int
@@ -164,17 +151,17 @@ class Query:
             return [Reference(*k) for k in db.execute("SELECT * FROM reference;")]
 
     @strawberry.field
-    def implementations(self, name: str = None) -> List[Implementation]:
+    def implementations(
+        self, name: str = None, tag: str = None
+    ) -> List[Implementation]:
         with db_session:
-            q = orm.Implementation.select
-            if name:
-                q = lambda: orm.Implementation.select_by_sql(
-                    "SELECT * FROM implementation WHERE name like $name"
-                )
-            entries = [k.to_dict() for k in q()]
-            for k in entries:
-                k["_implementations"] = k.pop("implementations")
-
+            name = name or "%"
+            tag = tag or "%"
+            q = orm.Implementation.select_by_sql(
+                "SELECT * FROM implementation WHERE name LIKE $name"
+                " AND tags LIKE $tag"
+            )
+            entries = [k.to_dict() for k in q]
             return [Implementation(**k) for k in entries]
 
     @strawberry.field
@@ -188,8 +175,15 @@ class Query:
             return [Activity(**k) for k in entries]
 
     @strawberry.field
-    def samm2(self) -> List[Samm2]:
+    def samm2(self, maturity: int = None) -> List[Samm2]:
         with db_session:
+            if maturity is not None:
+                return [
+                    Samm2(*k)
+                    for k in db.execute(
+                        "SELECT * FROM samm " " WHERE maturity = $maturity;"
+                    )
+                ]
             return [Samm2(*k) for k in db.execute("SELECT * FROM samm;")]
 
 
