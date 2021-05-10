@@ -110,7 +110,7 @@ def test_implementation():
 
 
 if __name__ == "__main__":
-    # format_implementation(sys.argv[1])
+    format_implementation(sys.argv[1])
     format_references(sys.argv[1])
 
 if __name__ == "main__":
