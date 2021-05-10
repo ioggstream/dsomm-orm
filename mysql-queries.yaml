@@ -38,12 +38,9 @@ mappings-activity-samm2: |-
 get-activity-samm2: |-
   SELECT DISTINCT s.*
   FROM
-    activity as a,
     samm as s
   WHERE
-    JSON_SEARCH($references, 'one',
-      CONCAT("samm2:", s.id)
-    ) IS NOT NULL
+      CONCAT("samm2:", s.id)  $references
 
 
 activity-references-unique: |-
@@ -138,6 +135,15 @@ implementation-references-unique-count: |-
   ORDER BY 2 DESC
   ;
 
+samm-unused-controls: |-
+  SELECT * FROM samm WHERE id NOT IN (
+    SELECT DISTINCT s.id
+    FROM
+      activity AS a,
+      samm as s
+    WHERE  a.references LIKE CONCAT('%', SUBSTRING(s.id, 3,2), '%')
+  )
+  ORDER BY 1;
 #
 # trashbin
 #

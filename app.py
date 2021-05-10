@@ -92,6 +92,14 @@ def get_references():
     return ["abc"]
 
 
+def escape_entries_as_mysql_list(entries):
+    if not entries:
+        return []
+
+    items = ["""'%s'""" % escape(i).strip("'") for i in entries]
+    return "(" + ",".join(i for i in items) + ")"
+
+
 @strawberry.type
 class Activity:
     dimension: str
@@ -99,10 +107,13 @@ class Activity:
     name: str
     level: str
     data: str
-    _references = strawberry.Private[List[str]]
-    references: List[ReferenceItem]
+    _references: strawberry.Private[List[str]]
     _implementation: strawberry.Private[List[str]]
     done: int
+
+    @strawberry.field
+    def references(self) -> List[ReferenceItem]:
+        return [ReferenceItem(name=n) for n in self._references]
 
     @strawberry.field
     def implementation(self) -> List[Implementation]:
@@ -132,20 +143,24 @@ class Activity:
             ]
 
     @strawberry.field
-    def samm2(self, stream: str) -> List[Samm2]:
+    def samm2(self, stream: str = None) -> List[Samm2]:
         with db_session:
-            sql = dsomm.queries["get-activity-samm2"]
-            q = {"references": self.references, "stream": stream}
+            sql = f"""
+              SELECT DISTINCT *
+              FROM samm
+              WHERE
+                  CONCAT("samm2:", id) in {escape_entries_as_mysql_list(self._references)}
+            """
+            q = {"stream": stream}
             if stream:
                 sql += " AND s.stream LIKE $stream"
             return [Samm2(*k) for k in db.execute(sql, globals=q)]
 
-
-@strawberry.type
-class CountObject:
-    dimension: str
-    subdimension: str
-    count: int
+    @strawberry.field
+    def samm2_controls(self) -> List[Samm2]:
+        with db_session:
+            sql = dsomm.queries["samm2-unused-controls"]
+            return [Samm2(*k) for k in db.execute(sql)]
 
 
 @strawberry.type
@@ -192,12 +207,16 @@ class Query:
             return [Implementation(**k) for k in entries]
 
     @strawberry.field
-    def activities(self) -> List[Activity]:
+    def activities(self, name: str = None) -> List[Activity]:
         with db_session:
-            entries = [k.to_dict() for k in orm.Activity.select()]
+            entries = [
+                k.to_dict() for k in orm.Activity.select(lambda a: f"{name}" in a.name)
+            ]
             for k in entries:
                 if "implementation" in k:
                     k["_implementation"] = k.pop("implementation", [])
+                if "references" in k:
+                    k["_references"] = k.pop("references", [])
 
             return [Activity(**k) for k in entries]
 
@@ -248,18 +267,6 @@ class Query:
                     f"""
                 SELECT distinct dimension from activity
                 """
-                )
-            ]
-
-    @strawberry.field
-    def counters(self) -> List[CountObject]:
-        with db_session:
-            return [
-                CountObject(*k)
-                for k in db.execute(
-                    """ SELECT distinct dimension, subdimension, count(*) as count
-  FROM activity
-  GROUP BY dimension, subdimension;"""
                 )
             ]
 
