@@ -128,8 +128,8 @@ def get_github_topics(repo):
         response = json.loads(conn.getresponse().read())
         topics = response["names"]
         return topics
-    except Exception:
-        print(repo, response)
+    except Exception as e:
+        print(repo, e)
         return []
 
 
