@@ -142,6 +142,33 @@ class Activity:
 
 
 @strawberry.type
+class CountObject:
+    dimension: str
+    subdimension: str
+    count: int
+
+
+@strawberry.type
+class Subdimension:
+    name: str
+    activities: List[Activity]
+
+    @strawberry.field
+    def count(self) -> int:
+        return len(self.activities)
+
+
+@strawberry.type
+class Dimension:
+    name: str
+    subdimensions: List[Subdimension]
+
+    @strawberry.field
+    def count(self) -> int:
+        return len(self.subdimensions)
+
+
+@strawberry.type
 class Query:
     """All endpoints."""
 
@@ -152,7 +179,7 @@ class Query:
 
     @strawberry.field
     def implementations(
-        self, name: str = None, tag: str = None
+        self, name: str = None, tag: str = None, has_topics: str = None
     ) -> List[Implementation]:
         with db_session:
             name = name or "%"
@@ -185,6 +212,56 @@ class Query:
                     )
                 ]
             return [Samm2(*k) for k in db.execute("SELECT * FROM samm;")]
+
+    @strawberry.field
+    def dimension(self) -> List[Dimension]:
+        """
+        XXX this is ugly but it was quicker to implement ;)
+        FIXME - escaping code & co
+        :return:
+        """
+        with db_session:
+            return [
+                Dimension(
+                    name=d[0],
+                    subdimensions=[
+                        Subdimension(
+                            name=s[0],
+                            activities=[
+                                Activity(*a)
+                                for a in db.execute(
+                                    f"""
+                        SELECT * FROM activity WHERE dimension="{d[0]}" and subdimension="{s[0]}";
+                        """
+                                )
+                            ],
+                        )
+                        for s in db.execute(
+                            f"""
+                        SELECT DISTINCT subdimension FROM activity WHERE
+                        dimension='{d[0]}'
+                        """
+                        )
+                    ],
+                )
+                for d in db.execute(
+                    f"""
+                SELECT distinct dimension from activity
+                """
+                )
+            ]
+
+    @strawberry.field
+    def counters(self) -> List[CountObject]:
+        with db_session:
+            return [
+                CountObject(*k)
+                for k in db.execute(
+                    """ SELECT distinct dimension, subdimension, count(*) as count
+  FROM activity
+  GROUP BY dimension, subdimension;"""
+                )
+            ]
 
 
 def test_overview_count(db):

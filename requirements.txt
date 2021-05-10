@@ -7,3 +7,5 @@ mysql-connector-python
 pymysql
 html2markdown
 ruamel.yaml
+uvicorn
+cryptography
