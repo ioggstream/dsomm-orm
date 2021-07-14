@@ -143,17 +143,22 @@ class Activity:
             ]
 
     @strawberry.field
-    def samm2(self, stream: str = None) -> List[Samm2]:
+    def samm2(self, stream: str = None, maturity: str = None) -> List[Samm2]:
+        if not self._references:
+            return []
+
         with db_session:
             sql = f"""
               SELECT DISTINCT *
-              FROM samm
+              FROM samm AS s
               WHERE
                   CONCAT("samm2:", id) in {escape_entries_as_mysql_list(self._references)}
             """
-            q = {"stream": stream}
+            q = {"stream": stream, "maturity": maturity}
             if stream:
                 sql += " AND s.stream LIKE $stream"
+            if maturity:
+                sql += " AND s.maturity = $maturity"
             return [Samm2(*k) for k in db.execute(sql, globals=q)]
 
     @strawberry.field
@@ -184,6 +189,21 @@ class Dimension:
 
 
 @strawberry.type
+class Mutation:
+    @strawberry.mutation
+    def toggle_activity(self, activity: str) -> Activity:
+        a = orm.Activity.get(name=activity)
+        a.done = 0 if a.done else 1
+        k = a.to_dict()
+        if "implementation" in k:
+            k["_implementation"] = k.pop("implementation", [])
+        if "references" in k:
+            k["_references"] = k.pop("references", [])
+
+        return Activity(**k)
+
+
+@strawberry.type
 class Query:
     """All endpoints."""
 
@@ -207,18 +227,26 @@ class Query:
             return [Implementation(**k) for k in entries]
 
     @strawberry.field
-    def activities(self, name: str = None) -> List[Activity]:
+    def activities(
+        self, name: str = None, skip_empty_samm: bool = True, done: int = None
+    ) -> List[Activity]:
         with db_session:
-            entries = [
-                k.to_dict() for k in orm.Activity.select(lambda a: f"{name}" in a.name)
-            ]
+            q = orm.Activity.select()
+            if name:
+                q = q.where(lambda a: f"{name}" in a.name)
+            if done is not None:
+                q = q.where(lambda a: a.done is int(done))
+            entries = [k.to_dict() for k in q]
             for k in entries:
                 if "implementation" in k:
                     k["_implementation"] = k.pop("implementation", [])
                 if "references" in k:
                     k["_references"] = k.pop("references", [])
 
-            return [Activity(**k) for k in entries]
+            activities = (Activity(**k) for k in entries)
+            activities = [a for a in activities if not skip_empty_samm or a._references]
+            # import pdb; pdb.set_trace()
+            return activities
 
     @strawberry.field
     def samm2(self, maturity: int = None) -> List[Samm2]:
@@ -273,4 +301,7 @@ def test_overview_count(db):
         assert ("BuildAndDeployment", "Build", 4) in overview
 
 
-schema = strawberry.Schema(query=Query)
+schema = strawberry.Schema(
+    query=Query,
+    mutation=Mutation,
+)

@@ -131,7 +131,7 @@ if __name__ == "main__":
         "references",
     ]
     dimensions = format_references()
-    Path("/tmp/dim.yaml").write_text(safe_dump(dimensions, indent=2))
+    Path("tmp.dim.yaml").write_text(safe_dump(dimensions, indent=2))
 
     activities = [
         (

@@ -3,9 +3,12 @@ Create DSOMM database with pony.orm.
 """
 import http
 import json
+from pathlib import Path
 from re import findall
 from urllib.parse import urlparse
 
+import yaml
+from jsonpath_ng import parse as jsonpath_parse
 from jsonpointer import resolve_pointer
 from pony.orm import (
     Database,
@@ -59,12 +62,6 @@ class Implementation(db.Entity):
 class Reference(db.Entity):
     name = PrimaryKey(str)
     description = Optional(str)
-
-
-from pathlib import Path
-
-import yaml
-from jsonpath_ng import parse as jsonpath_parse
 
 
 def yl(fpath):
