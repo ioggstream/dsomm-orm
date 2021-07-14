@@ -250,8 +250,8 @@ class Query:
                                 Activity(*a)
                                 for a in db.execute(
                                     f"""
-                        SELECT * FROM activity WHERE dimension="{d[0]}" and subdimension="{s[0]}";
-                        """
+                                    SELECT * FROM activity WHERE dimension="{d[0]}" and subdimension="{s[0]}";
+                                    """
                                 )
                             ],
                         )
@@ -263,11 +263,7 @@ class Query:
                         )
                     ],
                 )
-                for d in db.execute(
-                    f"""
-                SELECT distinct dimension from activity
-                """
-                )
+                for d in db.execute(""" SELECT distinct dimension from activity """)
             ]
 
 
