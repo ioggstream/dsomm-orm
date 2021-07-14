@@ -13,6 +13,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_HOST: db
+      PYTHONPATH: ":/code:"
     volumes:
       - .:/code
     working_dir: /code

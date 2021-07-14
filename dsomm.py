@@ -37,15 +37,21 @@ def dict_merge(*args, add_keys=True):
     return rtn_dct
 
 
-def load_activities(fpath="downloads/data-new") -> Dict:
+def load_activities(fpath="downloads/data/dimensions-subdimensions-activties") -> Dict:
     ret = {}
     fpath = Path(fpath)
+    if not fpath.exists():
+        raise OSError(fpath.absolute())
     for f in fpath.glob("*/*"):
-        dimension = f.relative_to(fpath).parent.name
-        if dimension not in ret:
-            ret[dimension] = {}
-            print("Found " + dimension)
-        ret[dimension] = dict_merge(ret[dimension], yaml_load(Path(f).read_text()))
+        data = yaml_load(Path(f).read_text())
+        for dimension, value in data.items():
+            if dimension.startswith("_"):
+                # skip metadata
+                continue
+            if dimension not in ret:
+                ret[dimension] = {}
+                print("Found " + dimension)
+            ret[dimension] = dict_merge(ret[dimension], value)
     return ret
 
 

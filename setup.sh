@@ -24,6 +24,7 @@ cd downloads
 git-get https://github.com/OWASP/samm "Supporting Resources/v2.0/Datamodel/Datafiles"
 # git-get https://github.com/wurstbrot/DevSecOps-MaturityModel data
 git-get https://github.com/ioggstream/DevSecOps-MaturityModel data ioggstream-70
+git-get https://github.com/ioggstream/DevSecOps-MaturityModel data ioggstream-normalize-1
 find data -name \*.yaml -exec sed -i 's,g-education-and-guidance|\(\w\)|\(\w\),G-EG-\2-\1,g' {} \;
 find data -name \*.yaml -exec sed -i 's,d-threat-assessment|\(\w\)|\(\w\),D-TA-\2-\1,g' {} \;
 find data -name \*.yaml -exec sed -i 's,d-software-requirements|\(\w\)|\(\w\),D-SR-\2-\1,g' {} \;

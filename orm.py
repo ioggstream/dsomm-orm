@@ -6,6 +6,7 @@ import json
 from re import findall
 from urllib.parse import urlparse
 
+from jsonpointer import resolve_pointer
 from pony.orm import (
     Database,
     Json,
@@ -60,6 +61,41 @@ class Reference(db.Entity):
     description = Optional(str)
 
 
+from pathlib import Path
+
+import yaml
+from jsonpath_ng import parse as jsonpath_parse
+
+
+def yl(fpath):
+    return yaml.safe_load(Path(fpath).read_text())
+
+
+def resolve_refs(data, context_path="."):
+    context_path = Path(context_path)
+    for item in jsonpath_parse("$..'$ref'").find(data):
+        ref = item.value
+        *fpath, jpath = ref.split("#", 2)
+        # Resolve jpath from external file or
+        #   internal data.
+        jdata = yl(context_path / fpath[0]) if fpath and fpath[0] else data
+        rdata = resolve_pointer(jdata, jpath)
+
+        # The root instance match.
+        if item.context.value == data:
+            return rdata
+
+        # Supports both dict and lists.
+        k = (
+            item.context.path.fields[0]
+            if hasattr(item.context.path, "fields")
+            else item.context.path.index
+        )
+        ctx = item.context.context.value
+        ctx[k] = rdata
+    return data
+
+
 def create_database():
     for t in ("activity", "reference", "implementation"):
         db.drop_table(t, if_exists=True, with_all_data=True)
@@ -81,7 +117,9 @@ def create_database():
                 ],
             )
             implementation_keys = [
-                x["name"] for x in implementation if isinstance(x, dict) and "name" in x
+                x["$ref"].split("/")[-1]
+                for x in implementation
+                if isinstance(x, dict) and "$ref" in x
             ]
             t = Activity(
                 dimension=dimension,
@@ -98,13 +136,15 @@ def create_database():
                 reference = i.split(":")[0]
                 Reference.get(name=reference) or Reference(name=reference)
             for i in implementation:
-                i = i.copy()
-                if not (i_name := i.pop("name", None)):
+                if not (i_name := i.get("$ref", None)):
                     continue
 
-                i_name = str(i_name)[:64]
+                i = resolve_refs(i.copy(), context_path="downloads/")
+                i_name = i_name.split("/")[-1]
+                i.pop("name")
+
                 topics = []
-                if ghrepo := findall("https://[a-z/0-9A-Z.]+", i_name):
+                if False and (ghrepo := findall("https://[a-z/0-9A-Z.]+", i_name)):
                     repo = urlparse(ghrepo[0]).path.strip("/")
                     topics = get_github_topics(repo)
                 Implementation.get(name=i_name) or Implementation(
