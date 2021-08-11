@@ -30,6 +30,13 @@ and enter the container.
         docker-compose up -d gql
         docker exec -ti dsomm-model_gql_1 /bin/bash
 
+
+## Export schema
+
+To export the schema, run
+
+        strawberry export-schema app > schema.gql
+
 # Contributing
 
 ## pre-commit

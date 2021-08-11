@@ -189,6 +189,19 @@ class Dimension:
 
 
 @strawberry.type
+class Maturity:
+    dimension: str
+    level: int
+    maturity: int = 0
+    count: int = 0
+    score: int = 0
+
+    """
+    select dimension, level,sum(done) from activity  group by dimension,level;
+    """
+
+
+@strawberry.type
 class Mutation:
     @strawberry.mutation
     def toggle_activity(self, activity: str) -> Activity:
@@ -202,10 +215,38 @@ class Mutation:
 
         return Activity(**k)
 
+    @strawberry.mutation
+    def set_activity(self, activity: str, done: bool) -> Activity:
+        a = orm.Activity.get(name=activity)
+        a.done = done
+        k = a.to_dict()
+        if "implementation" in k:
+            k["_implementation"] = k.pop("implementation", [])
+        if "references" in k:
+            k["_references"] = k.pop("references", [])
+
+        return Activity(**k)
+
 
 @strawberry.type
 class Query:
     """All endpoints."""
+
+    @strawberry.field
+    def maturity(self) -> List[Maturity]:
+        with db_session:
+            return [
+                Maturity(*k)
+                for k in db.execute(
+                    """
+            SELECT dimension, level, sum(done) maturity,
+                    count(done) total,
+                    FLOOR(100*sum(done)/count(done)) score
+            FROM activity
+            GROUP BY dimension,level;
+            """
+                )
+            ]
 
     @strawberry.field
     def references(self) -> List[Reference]:
