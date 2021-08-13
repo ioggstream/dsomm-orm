@@ -1,3 +1,8 @@
+#
+# DSOMM showcase with data stored on mysql,
+#   processed by graphql
+#   and presented via a react application.
+#
 version: '3.6'
 services:
   db:
@@ -9,54 +14,34 @@ services:
   gql: &gql
     depends_on:
       - db
+      - test
     build: .
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_HOST: db
       PYTHONPATH: ":/code:"
+    ports:
+    - 13001:8000
     volumes:
       - .:/code
     working_dir: /code
+  dev:
+    <<: *gql
+    depends_on:
+    - db
+    ports: []
     command: ["/usr/bin/tail", "-f", "/etc/hosts"]
+  web:
+    build: ./webapp
+    ports:
+    - 13000:3000
+    depends_on:
+    - gql
   test:
     <<: *gql
-    command: ["tox"]
-  postgres:
-    image: postgres:12
-    restart: always
-    volumes:
-    - db_data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_PASSWORD: postgrespassword
-  graphql-engine:
-    image: hasura/graphql-engine:pull5655-633f084f
-    ports:
-    - "8080:8080"
     depends_on:
-    - "postgres"
-    - "db"
-    command:
-    - graphql-engine
-    - --mysql-host
-    - mysql
-    - --mysql-user
-    - root
-    - --mysql-port
-    - "3306"
-    - --mysql-dbname
-    - dsomm
-    - --mysql-password
-    - root
-    - serve
-    restart: always
-    environment:
-      HASURA_GRAPHQL_DATABASE_URL: postgres://postgres:postgrespassword@postgres:5432/postgres
-      ## enable the console served by server
-      HASURA_GRAPHQL_ENABLE_CONSOLE: "true" # set to "false" to disable console
-      ## enable debugging mode. It is recommended to disable this in production
-      HASURA_GRAPHQL_DEV_MODE: "true"
-      HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
-      ## uncomment next line to set an admin secret
-      # HASURA_GRAPHQL_ADMIN_SECRET: myadminsecretkey
+    - db
+    ports: []
+    command: ["tox"]
 volumes:
   db_data:

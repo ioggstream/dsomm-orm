@@ -9,3 +9,7 @@ html2markdown
 ruamel.yaml
 uvicorn
 cryptography
+starlette
+strawberry-graphql[debug-server]
+jsonpath_ng
+jsonpointer

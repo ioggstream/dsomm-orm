@@ -1,0 +1,79 @@
+type Activity {
+  dimension: String!
+  subdimension: String!
+  name: String!
+  level: String!
+  data: String!
+  done: Int!
+  references: [ReferenceItem!]!
+  implementation: [Implementation!]!
+  samm2(stream: String!, maturity: String!): [Samm2!]!
+  samm2Controls: [Samm2!]!
+}
+
+type BareActivity {
+  dimension: String!
+  subdimension: String!
+  name: String!
+}
+
+type Dimension {
+  name: String!
+  subdimensions: [Subdimension!]!
+  count: Int!
+}
+
+type Implementation {
+  name: String!
+  description: String!
+  topics: [String!]!
+  tags: [String!]!
+  url: String!
+  activities: [BareActivity!]!
+}
+
+type Maturity {
+  dimension: String!
+  level: Int!
+  maturity: Int!
+  count: Int!
+  score: Int!
+}
+
+type Mutation {
+  toggleActivity(activity: String!): Activity!
+  setActivity(activity: String!, done: Boolean!): Activity!
+}
+
+type Query {
+  maturity: [Maturity!]!
+  references: [Reference!]!
+  implementations(name: String!, tag: String!, hasTopics: String!): [Implementation!]!
+  activities(name: String!, skipEmptySamm: Boolean! = true, done: Int!): [Activity!]!
+  samm2(maturity: Int!): [Samm2!]!
+  dimension: [Dimension!]!
+}
+
+type Reference {
+  name: String!
+  description: String!
+}
+
+type ReferenceItem {
+  name: String!
+}
+
+type Samm2 {
+  index: Int!
+  id: String!
+  function: String!
+  practice: String!
+  maturity: String!
+  stream: String!
+}
+
+type Subdimension {
+  name: String!
+  activities: [Activity!]!
+  count: Int!
+}
