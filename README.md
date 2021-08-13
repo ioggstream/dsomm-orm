@@ -31,6 +31,12 @@ and enter the container.
         docker exec -ti dsomm-model_gql_1 /bin/bash
 
 
+To play with the sample webapp
+
+        docker-compose up -d web
+
+and then http://localhost:13000/
+
 ## Export schema
 
 To export the schema, run
